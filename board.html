@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Western Ride Share</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&amp;family=Bricolage+Grotesque:wght@700;800&amp;display=swap">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#dce9db;color:#172f27;font:16px Geist,system-ui,sans-serif}header,main{max-width:1060px;margin:auto;padding:22px}header{display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:750}small,.muted{color:#415c50}header span{background:#d8edc9;border-radius:30px;padding:7px 12px;font-size:13px}.hero{background:#143f35;color:white;border-radius:24px;padding:clamp(24px,5vw,60px);position:relative;overflow:hidden}.hero p{max-width:440px;color:#deeee5;line-height:1.55}.route{font-weight:750;color:#e6fb93;letter-spacing:.07em;text-transform:uppercase;font-size:13px}h1{font:700 clamp(42px,8vw,76px)/.97 "Bricolage Grotesque",Geist,system-ui,sans-serif;margin:20px 0;max-width:650px}h2{margin-top:0;font:700 29px "Bricolage Grotesque",Geist,system-ui,sans-serif}button,select,input{font:inherit}button{cursor:pointer;border:0;border-radius:9px;padding:10px 15px;background:#143f35;color:white;font-weight:700}button.alt{background:#dfebde;color:#214537}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #41774f;outline-offset:3px}.hero button{background:#e6fb93;color:#213820}.hero .alt{background:#fff2;color:white;border:1px solid #fff8}.actions,.filters,.days{display:flex;flex-wrap:wrap;gap:9px}.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;margin-top:18px;align-items:start}.panel{background:#f7faef;border:1px solid #c8dbc9;border-radius:16px;padding:22px}.post{border-top:1px solid #c8dbc9;padding:14px 0}.post p{margin:6px 0}.post small{display:block;margin:4px 0}.post button{margin-top:8px}.filters+label{margin-top:12px}.filters label{flex:1;min-width:135px}label{display:block;font-weight:650}select,input:not([type=checkbox]){display:block;width:100%;padding:9px;border:1px solid #9db8a5;border-radius:7px;background:white;color:inherit;margin-top:5px}form>label,fieldset{margin-bottom:12px}fieldset{border:1px solid #b8cebb;border-radius:8px}.days label{font-weight:500}.time-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.time-fields label{min-width:0}.guide{margin-top:18px}.guide summary{cursor:pointer;font:700 25px "Bricolage Grotesque",Geist,system-ui,sans-serif}.guide summary:focus-visible{outline:3px solid #41774f;outline-offset:4px}.guide ol{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin:16px 0 12px;padding-left:22px}.guide li{padding-right:10px;line-height:1.5}.guide li strong{display:block}.guide p{margin:12px 0 0;line-height:1.5}.guide .example{padding:10px 12px;border-radius:8px;background:#e3efd6}@media(max-width:700px){.guide ol{grid-template-columns:1fr;gap:10px}}.empty{padding-top:16px;color:#415c50}@media(max-width:700px){.grid{grid-template-columns:1fr}}
+dialog{width:min(560px,calc(100% - 24px));max-height:85vh;border:1px solid #b8cebb;border-radius:16px;padding:22px;color:inherit;background:#f7faef}dialog::backdrop{background:#102c24b8}dialog h2{margin:16px 0 10px}#messageList{max-height:38vh;overflow:auto}#messageList button{display:block;margin:7px 0;text-align:left}.message-entry{padding:8px 12px;margin:8px 0;background:#dfebde;border-radius:8px}.message-entry p{white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0}textarea{font:inherit;width:100%;display:block;padding:8px;margin:5px 0 10px}
+
+body{min-height:100vh;background-color:#dce9db;background-image:radial-gradient(ellipse at 90% 8%,#eef6bf 0%,transparent 48%),radial-gradient(ellipse at 3% 60%,#a9cdb3 0%,transparent 52%),repeating-linear-gradient(0deg,#36634516 0 1px,transparent 1px 32px),repeating-linear-gradient(90deg,#36634516 0 1px,transparent 1px 32px)}
+.hero{background-color:#143f35;background-image:radial-gradient(ellipse at 92% 0%,#4c856a 0%,transparent 57%),repeating-linear-gradient(90deg,#e3ffdf19 0 1px,transparent 1px 36px),repeating-linear-gradient(0deg,#e3ffdf19 0 1px,transparent 1px 36px);box-shadow:0 16px 35px #173a2924}
+.hero h1{letter-spacing:-.045em}.hero h1 em{color:#e6fb93;font-style:normal}
+.panel{box-shadow:0 8px 20px #234a3212}.post{overflow-wrap:anywhere}
+select,input:not([type=checkbox]),textarea{background:#fcfdf8}textarea{border:1px solid #9db8a5;border-radius:7px}
+input[type=checkbox]{accent-color:#26734f}.hero button:focus-visible{outline-color:#fff}
+button:hover:not(:disabled){filter:brightness(1.07)}button:disabled{opacity:.65;cursor:wait}
+@media(max-width:700px){header,main{padding:15px}.hero h1{font-size:clamp(38px,10vw,64px)}}
+
+.site-header{flex-wrap:wrap}.site-nav{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.site-nav a,.site-nav button{font:inherit;font-size:.9rem;padding:9px 11px;border-radius:9px}
+.site-nav a{color:#214537;text-decoration:none}.site-nav a:hover{background:#dfebde;text-decoration:underline}
+.site-nav a:focus-visible,#accountDialog a:focus-visible{outline:3px solid #41774f;outline-offset:3px}
+#accountEmail{overflow-wrap:anywhere}#accountDialog form{margin:16px 0}#accountDialog a{color:#143f35;font-weight:700}
+
+.home-button{display:inline-flex;align-items:center;gap:10px;padding:7px 15px 7px 7px;min-height:48px;color:#f7faef;background:#143f35;border:1px solid #376858;border-radius:14px;text-decoration:none;box-shadow:0 4px 12px #173a2926}
+.home-button strong{font:800 clamp(1rem,3.6vw,1.25rem)/1.1 "Bricolage Grotesque",Geist,system-ui,sans-serif}
+.home-button:hover{background:#245848}.home-button:focus-visible{outline:3px solid #41774f;outline-offset:4px}
+.home-mark{width:38px;height:38px;flex:none;display:block;background:#e6fb93;border-radius:10px}
+</style>
+<header class="site-header" id="home">
+  <a class="home-button" href="./" aria-label="Western Ride Share home">
+    <svg class="home-mark" viewBox="0 0 40 40" aria-hidden="true">
+      <path d="M7 12l6 16 7-12 7 12 6-16" fill="none" stroke="#143f35" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="7" cy="12" r="3.6" fill="#143f35"/>
+      <circle cx="33" cy="12" r="3.6" fill="#e6fb93" stroke="#143f35" stroke-width="2"/>
+    </svg>
+    <strong>Western Ride Share</strong>
+  </a>
+  <nav class="site-nav" aria-label="Ride board navigation">
+    <a href="#rideBoard">Ride board</a>
+    <button type="button" class="alt" id="inbox">Messages</button>
+    <button type="button" id="accountButton">Account</button>
+  </nav>
+</header>
+<main><section class="hero"><div class="route">SMRT communities ↔ Western</div><h1>Share a ride <em>to Western.</em></h1><p>Find a ride to Western’s La Crosse campus or a ride home after class. Request a seat or offer one on your commute.</p><div class="actions"><button id="request">Request a ride</button><button class="alt" id="offer">Offer a ride</button></div></section>
+<details class="panel guide" open>
+  <summary>How it works</summary>
+  <ol>
+    <li><strong>Request or offer a ride</strong> Choose Request if you need a seat or Offer if you’re driving and have room.</li>
+    <li><strong>Enter your schedule</strong> Pick your community and the days you travel. For <b>To Western</b>, enter when you need to arrive or can get to campus. For <b>From Western</b>, enter when you can leave. Post each direction separately.</li>
+    <li><strong>Check the ride board</strong> Filter by community and direction. If you need a seat, look for offers on your days that fit your time. Select <b>Remove</b> on your own post when it’s out of date.</li>
+  </ol>
+  <p class="example"><strong>Example.</strong> For an 8 a.m. class, post Tomah → Western with <b>Arrive by 8:00 a.m.</b> Then post Western → Tomah with your after-class departure time.</p>
+  <p class="muted">People signed in to the ride board can see your post type, route, days, and time. The board keeps names and contact details private. Select Message on someone else’s post to coordinate privately. Open Messages to see replies.</p>
+</details>
+<div class="grid"><section class="panel" id="rideBoard"><h2>Ride board</h2><div class="filters"><label>Direction<select id="filterDirection"><option value="">Both directions</option><option value="campus">To Western</option><option value="home">From Western</option></select></label><label>Post type<select id="filterType"><option value="">Requests and offers</option><option>Request</option><option>Offer</option></select></label></div><label>Community<select id="filterCommunity"><option value="">All communities</option></select></label><p id="boardError" role="status" hidden><span id="boardErrorText"></span> <a href="./sign-in.html">Sign in</a></p><div id="board"/> aria-live="polite"></div></section>
+<section class="panel"><h2>Post a ride</h2><form id="post">
+<label>Post type<select name="kind" id="kind"><option>Request</option><option>Offer</option></select></label>
+<label>Community<select name="community" id="community" required></select></label>
+<label>Direction<select name="direction" id="direction"><option value="campus">To Western</option><option value="home">From Western</option></select></label>
+<fieldset><legend>Class days</legend><div class="days">
+<label><input type="checkbox" name="day" value="Mon"> Mon</label><label><input type="checkbox" name="day" value="Tue"> Tue</label><label><input type="checkbox" name="day" value="Wed"> Wed</label><label><input type="checkbox" name="day" value="Thu"> Thu</label><label><input type="checkbox" name="day" value="Fri"> Fri</label><label><input type="checkbox" name="day" value="Sat"> Sat</label><label><input type="checkbox" name="day" value="Sun"> Sun</label>
+</div></fieldset>
+<fieldset id="campusTime">
+  <legend>Arrive by</legend>
+  <div class="time-fields">
+    <label>Hour<select name="hour" required></select></label>
+    <label>Minute<select name="minute" required></select></label>
+    <label>AM or PM<select name="period" required><option>AM</option><option>PM</option></select></label>
+  </div>
+</fieldset>
+<fieldset id="homeTime" hidden disabled>
+  <legend>Leaving at</legend>
+  <div class="time-fields">
+    <label>Hour<select name="hour" required></select></label>
+    <label>Minute<select name="minute" required></select></label>
+    <label>AM or PM<select name="period" required><option>AM</option><option>PM</option></select></label>
+  </div>
+</fieldset>
+<button>Post ride</button><p id="feedback" role="status"></p></form></section></div>
+<dialog id="accountDialog" aria-labelledby="accountTitle">
+  <button type="button" class="alt" id="accountClose">Close</button>
+  <h2 id="accountTitle">Account settings</h2>
+  <p>Signed in as <strong id="accountEmail"></strong></p>
+  <form id="accountForm">
+    <label><input type="checkbox" name="emailEnabled"> Email me when I receive a message</label>
+    <p class="muted">Email notifications include the message text.</p>
+    <button>Save settings</button>
+  </form>
+  <p id="accountStatus" role="status"></p>
+  <a href="./sign-in.html" id="signOut">Sign out</a>
+</dialog>
+<dialog id="messagesDialog" aria-labelledby="messagesTitle">
+  <div class="actions"><button type="button" class="alt" id="messageBack">Inbox</button><button type="button" class="alt" id="messageClose">Close</button></div>
+  <h2 id="messagesTitle">Messages</h2>
+  <div id="messageList"></div>
+  <p id="messageStatus" role="status"></p>
+  <form id="compose" hidden>
+    <label>Message<textarea name="body" rows="3" maxlength="1000" required></textarea></label>
+    <button>Send message</button>
+  </form>
+</dialog>
+</main>
+<script type="module">\nimport {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
+import {SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY} from './supabase-config.js';
+const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+const {data:{user},error:authError}=await supabase.auth.getUser();
+if(authError||!user){location.replace('./sign-in.html');throw Error('Sign in required');}
+document.getElementById('signOut').addEventListener('click',async e=>{e.preventDefault();await supabase.auth.signOut();location.assign('./sign-in.html');});
+
+const get = id => document.getElementById(id);
+const form = get('post');
+const routeGroups = [['SMRT communities', ['Coon Valley','De Soto','Ferryville','Genoa','La Crosse','Lynxville','Onalaska','Prairie du Chien','Sparta','Stoddard','Tomah','Viroqua','West Salem','Westby']]];
+for (const id of ['community','filterCommunity']) {
+  const select = get(id);
+  for (const [route, communities] of routeGroups) {
+    const group = document.createElement('optgroup');
+    group.label = route;
+    for (const community of communities) group.append(new Option(community, community));
+    select.append(group);
+  }
+}
+let posts = [];
+let loaded = false;
+async function request(path, options = {}) {
+  const method = options.method || 'GET';
+  const input = options.body ? JSON.parse(options.body) : null;
+  let result;
+  if (path === '/api/rides' && method === 'GET') {
+    result = await supabase.from('rides').select('*').order('created_at',{ascending:false});
+    if (result.error) throw result.error;
+    const owned = result.data.filter(r=>r.owner_id===user.id).map(r=>r.id);
+    let counts = [];
+    if (owned.length) {
+      const res = await supabase.from('ride_messages').select('ride_id,thread_id').in('ride_id',owned).eq('sender_id',user.id);
+      if (res.error) throw res.error;
+      counts = res.data;
+    }
+    return result.data.map(r=>({...r,mine:r.owner_id===user.id,conversationCount:new Set(counts.filter(m=>m.ride_id===r.id).map(m=>m.thread_id)).size}));
+  }
+  if (path === '/api/rides' && method === 'POST') {
+    result = await supabase.from('rides').insert({...input,owner_id:user.id}).select('id').single();
+    if (result.error) throw result.error;return result.data;
+  }
+  if (path.startsWith('/api/rides/') && method === 'DELETE') {
+    result = await supabase.from('rides').delete().eq('id',path.split('/').pop()).eq('owner_id',user.id);
+    if (result.error) throw result.error;return {ok:true};
+  }
+  if (path === '/api/account' && method === 'GET') {
+    result = await supabase.from('notification_preferences').select('email_enabled').eq('user_id',user.id).maybeSingle();
+    if(result.error)throw result.error;return {email:user.email,emailEnabled:result.data?.email_enabled??true};
+  }
+  if (path === '/api/account' && method === 'POST') {
+    result = await supabase.from('notification_preferences').upsert({user_id:user.id,email_enabled:input.emailEnabled,updated_at:new Date().toISOString()});
+    if(result.error)throw result.error;return {ok:true};
+  }
+  if (path === '/api/notification-recipient') return {ok:true};
+  if (path.startsWith('/api/messages') && method === 'GET') {
+    const url = new URL(path,location.href), thread = url.pathname.match(/^\/api\/messages\/([a-f0-9-]{36})$/);
+    if (thread) {
+      result=await supabase.from('ride_messages').select('body,sent_at,sender_id').eq('thread_id',thread[1]).order('sent_at');
+      if(result.error)throw result.error;
+      if(!result.data.length)throw Error('Conversation not found.');
+      return result.data.map(m=>({...m,mine:m.sender_id===user.id}));
+    }
+    let q=supabase.from('ride_messages').select('thread_id,subject,sent_at,ride_id').order('sent_at',{ascending:false});
+    if(url.searchParams.get('ride'))q=q.eq('ride_id',url.searchParams.get('ride'));
+    result=await q;if(result.error)throw result.error;
+    const seen=new Set();
+    return result.data.filter(m=>{if(seen.has(m.thread_id))return false;seen.add(m.thread_id);return true;}).map(m=>({id:m.thread_id,subject:m.subject}));
+  }
+  if (path.startsWith('/api/messages') && method === 'POST') {
+    let rideId,visitorId,subject,threadId=null;
+    const thread=path.match(/^\/api\/messages\/([a-f0-9-]{36})$/);
+    if(thread) {
+      result=await supabase.from('ride_messages').select('ride_id,visitor_id,subject').eq('thread_id',thread[1]).limit(1).single();
+      if(result.error)throw result.error;
+      ({ride_id:rideId,visitor_id:visitorId,subject}=result.data);threadId=thread[1];
+    } else {
+      result=await supabase.from('rides').select('owner_id,direction,community').eq('id',input.rideId).single();
+      if(result.error)throw result.error;
+      rideId=input.rideId;visitorId=user.id;
+      subject=result.data.direction==='campus'?result.data.community+' → Western':'Western → '+result.data.community;
+    }
+    const params={p_ride_id:rideId,p_visitor_id:visitorId,p_subject:subject,p_body:input.body,p_thread_id:threadId};
+    result=await supabase.rpc('send_ride_message',params);
+    if(result.error)throw result.error;
+    return {id:result.data,notification:'unconfigured'};
+  }
+  throw Error('Unsupported request');
+}
+
+async function refresh() {
+  try {
+    posts = await request('/api/rides');
+    loaded = true;
+    get('boardError').hidden = true;
+    render();
+  } catch (error) {
+    loaded = false;
+    get('boardErrorText').textContent = error.message;
+    get('boardError').querySelector('a').hidden = false;
+    get('boardError').hidden = false;
+    render();
+    throw error;
+  }
+}
+function render() {
+  const board = get('board');
+  board.replaceChildren();
+  if (!loaded) { board.textContent = get('boardError').hidden ? 'Loading rides…' : ''; return; }
+  const visible = posts.filter(ride =>
+    (!get('filterCommunity').value || get('filterCommunity').value === ride.community) &&
+    (!get('filterDirection').value || get('filterDirection').value === ride.direction) &&
+    (!get('filterType').value || get('filterType').value === ride.kind)
+  );
+  if (!visible.length) {
+    const empty = document.createElement('p');
+    empty.className = 'empty';
+    empty.textContent = posts.length ? 'No posts match these filters.' : 'No rides posted yet. Add a request or offer to get started.';
+    board.append(empty);
+  }
+  for (const ride of visible) {
+    const card = document.createElement('article');
+    card.className = 'post';
+    const tag = document.createElement('small');
+    tag.textContent = ride.kind + (ride.mine ? ' · Your post' : '');
+    const route = document.createElement('strong');
+    const campus = 'Western (La Crosse)';
+    route.textContent = ride.direction === 'campus'
+      ? ride.community + ' → ' + campus
+      : campus + ' → ' + ride.community;
+    const details = document.createElement('p');
+    const [hours, minutes] = ride.time.slice(0,5).split(':').map(Number);
+    const time = new Date(2000,0,1,hours,minutes).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    details.textContent = ride.days.join(', ') + ' · ' + (ride.direction === 'campus' ? 'Arrive by ' : 'Leaving at ') + time;
+    card.append(tag,route,details);
+    if (ride.mine) {
+      const remove = document.createElement('button');
+      remove.className = 'alt';
+      remove.textContent = 'Remove';
+      remove.onclick = async () => {
+        remove.disabled = true;
+        try {
+          await request('/api/rides/' + ride.id, {method:'DELETE'});
+          await refresh();
+          get('feedback').textContent = 'Ride removed.';
+          get('filterDirection').focus();
+        } catch (error) {
+          get('feedback').textContent = error.message;
+          remove.disabled = false;
+        }
+      };
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+      if (ride.conversationCount) {
+        const messages = document.createElement('button');
+        messages.textContent = 'Messages (' + ride.conversationCount + ')';
+        messages.onclick = () => openMessage({rideFilter:ride.id, subject:route.textContent});
+        actions.append(messages);
+      }
+      actions.append(remove);
+      card.append(actions);
+    } else {
+      const message = document.createElement('button');
+      message.textContent = 'Message';
+      message.onclick = () => openMessage({rideId:ride.id, subject:route.textContent});
+      card.append(message);
+    }
+    board.append(card);
+  }
+}
+for (const [id,kind] of [['request','Request'],['offer','Offer']]) {
+  get(id).onclick = () => { get('kind').value = kind; get('kind').focus(); };
+}
+for (const id of ['filterDirection','filterType','filterCommunity']) get(id).onchange = render;
+for (const direction of ['campus', 'home']) {
+  const fields = get(direction + 'Time');
+  const hour = fields.querySelector('[name=hour]');
+  const minute = fields.querySelector('[name=minute]');
+  const period = fields.querySelector('[name=period]');
+  hour.add(new Option('Select', ''));
+  for (let value = 1; value <= 12; value++) hour.add(new Option(value, value));
+  for (let value = 0; value < 60; value++) {
+    const label = String(value).padStart(2, '0');
+    minute.add(new Option(label, label));
+  }
+  hour.value = direction === 'campus' ? '8' : '';
+  period.value = direction === 'campus' ? 'AM' : 'PM';
+}
+function syncTimeFields() {
+  for (const direction of ['campus', 'home']) {
+    const fields = get(direction + 'Time');
+    fields.hidden = fields.disabled = get('direction').value !== direction;
+  }
+}
+get('direction').onchange = syncTimeFields;
+syncTimeFields();
+form.onsubmit = async event => {
+  event.preventDefault();
+  const data = new FormData(form);
+  const days = data.getAll('day');
+  const hour = Number(data.get('hour')) % 12 + (data.get('period') === 'PM' ? 12 : 0);
+  const time = String(hour).padStart(2, '0') + ':' + data.get('minute');
+  if (!days.length) {
+    get('feedback').textContent = 'Choose at least one day.';
+    form.querySelector('[name=day]').focus();
+    return;
+  }
+  const button = form.querySelector('button');
+  button.disabled = true;
+  get('feedback').textContent = '';
+  try {
+    await request('/api/rides', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({kind:data.get('kind'), direction:data.get('direction'),
+        community:data.get('community'), days, time})
+    });
+    for (const id of ['filterDirection','filterType','filterCommunity']) get(id).value = '';
+    get('feedback').textContent = 'Ride posted.';
+    await refresh().catch(() => {
+      get('feedback').textContent = 'Ride posted. Reload to refresh the board.';
+    });
+  } catch (error) {
+    get('feedback').textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+};
+render();
+refresh().then(() => request('/api/notification-recipient', {method:'POST'})).catch(() => {});
+
+const accountDialog = get('accountDialog');
+const accountForm = get('accountForm');
+const accountStatus = get('accountStatus');
+get('accountClose').onclick = () => accountDialog.close();
+get('accountButton').onclick = async () => {
+  accountDialog.showModal();
+  accountForm.hidden = true;
+  get('accountEmail').textContent = '';
+  accountStatus.textContent = 'Loading account settings…';
+  try {
+    const account = await request('/api/account');
+    get('accountEmail').textContent = account.email || 'Email unavailable';
+    accountForm.elements.emailEnabled.checked = account.emailEnabled;
+    accountForm.hidden = !account.email;
+    accountStatus.textContent = '';
+  } catch (error) {
+    accountStatus.textContent = error.message;
+  }
+};
+accountForm.onsubmit = async event => {
+  event.preventDefault();
+  const save = accountForm.querySelector('button');
+  save.disabled = true;
+  accountStatus.textContent = 'Saving…';
+  try {
+    await request('/api/account', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({emailEnabled:accountForm.elements.emailEnabled.checked})
+    });
+    accountStatus.textContent = 'Settings saved.';
+  } catch (error) {
+    accountStatus.textContent = error.message;
+  } finally {
+    save.disabled = false;
+  }
+};
+
+const dialog = get('messagesDialog');
+const compose = get('compose');
+const messageList = get('messageList');
+const messageStatus = get('messageStatus');
+let currentView;
+function openMessage(view = {}) {
+  currentView = view;
+  if (!dialog.open) dialog.showModal();
+  compose.reset();
+  compose.hidden = !view.rideId && !view.id;
+  get('messageBack').hidden = compose.hidden;
+  get('messagesTitle').textContent = view.subject || 'Messages';
+  messageList.replaceChildren();
+  messageStatus.textContent = view.rideId ? 'Start a private conversation about this ride.' : 'Loading…';
+  if (view.rideId) return;
+  const inboxPath = view.rideFilter
+    ? '/api/messages?ride=' + encodeURIComponent(view.rideFilter)
+    : '/api/messages';
+  request(view.id ? '/api/messages/' + view.id : inboxPath).then(items => {
+    if (currentView !== view) return;
+    messageStatus.textContent = items.length ? (view.notice || '') : 'No conversations yet. Select Message on a ride post to start one.';
+    for (const item of items) {
+      if (!view.id) {
+        const button = document.createElement('button');
+        button.className = 'alt';
+        button.textContent = item.subject;
+        button.onclick = () => openMessage(item);
+        messageList.append(button);
+        continue;
+      }
+      const entry = document.createElement('article');
+      entry.className = 'message-entry';
+      const heading = document.createElement('small');
+      heading.textContent = (item.mine ? 'You' : 'Other participant') + ' · ' +
+        new Date(item.sent_at).toLocaleString();
+      const body = document.createElement('p');
+      body.textContent = item.body;
+      entry.append(heading,body);
+      messageList.append(entry);
+    }
+    messageList.scrollTop = messageList.scrollHeight;
+  }).catch(error => {
+    if (currentView === view) messageStatus.textContent = error.message;
+  });
+}
+get('inbox').onclick = get('messageBack').onclick = () => openMessage();
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && !dialog.open) refresh().catch(() => {});
+});
+get('messageClose').onclick = () => dialog.close();
+compose.onsubmit = async event => {
+  event.preventDefault();
+  const view = currentView;
+  const body = new FormData(compose).get('body');
+  const send = compose.querySelector('button');
+  send.disabled = true;
+  try {
+    const {id, notification} = await request(view.id ? '/api/messages/' + view.id : '/api/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({body, rideId:view.rideId})
+    });
+    const notices = {
+      accepted:'Resend accepted the email. Check Resend for delivery status.',
+      disabled:'Email skipped because the recipient turned off email notifications.',
+      unregistered:'Email skipped. The recipient needs to open the board while signed in.',
+      unconfigured:'Email skipped. The site’s email settings are incomplete.',
+      forbidden:'Resend rejected the email (403). The test sender can only email the address on the Resend account.',
+      rejected:'Resend rejected the email. Your in-app message was saved.',
+      unconfirmed:'The email result could not be confirmed.'
+    };
+    const notice = 'Message saved in your private inbox. Email notifications are not connected yet.';
+    if (dialog.open && currentView === view) openMessage({id, subject:view.subject, notice});
+  } catch (error) {
+    if (currentView === view) messageStatus.textContent = error.message;
+  } finally {
+    send.disabled = false;
+  }
+};
+</script>
+</html>

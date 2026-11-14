@@ -89,13 +89,20 @@ button:hover:not(:disabled){filter:brightness(1.07)}button:disabled{opacity:.65;
     <li><strong>Check the ride board</strong> Filter by community and direction. If you need a seat, look for offers on your days that fit your time. Select <b>Remove</b> on your own post when it’s out of date.</li>
   </ol>
   <p class="example"><strong>Example.</strong> For an 8 a.m. class, post Tomah → Western with <b>Arrive by 8:00 a.m.</b> Then post Western → Tomah with your after-class departure time.</p>
-  <p class="muted">People signed in to the ride board can see your post type, route, days, and time. The board keeps names and contact details private. Select Message on someone else’s post to coordinate privately. Open Messages to see replies.</p>
+  <p class="muted">People signed in to the ride board can see your post type, route, days, and time. The board keeps names and contact details private. Ride preferences are informational only; they do not verify gender or prevent anyone from sending a message. Select Message on someone else’s post to coordinate privately. Open Messages to see replies.</p>
 </details>
 <div class="grid"><section class="panel" id="rideBoard"><h2>Ride board</h2><div class="filters"><label>Direction<select id="filterDirection"><option value="">Both directions</option><option value="campus">To Western</option><option value="home">From Western</option></select></label><label>Post type<select id="filterType"><option value="">Requests and offers</option><option>Request</option><option>Offer</option></select></label></div><label>Community<select id="filterCommunity"><option value="">All communities</option></select></label><p id="boardError" role="status" hidden><span id="boardErrorText"></span> <a href="./sign-in.html">Sign in</a></p><div id="board" aria-live="polite"></div></section>
 <section class="panel"><h2>Post a ride</h2><form id="post">
 <label>Post type<select name="kind" id="kind"><option>Request</option><option>Offer</option></select></label>
 <label>Community<select name="community" id="community" required></select></label>
 <label>Direction<select name="direction" id="direction"><option value="campus">To Western</option><option value="home">From Western</option></select></label>
+<label>Ride preference
+<select name="ride_preference" id="ridePreference">
+<option value="everyone">Open to everyone</option>
+<option value="women">Women only</option>
+<option value="men">Men only</option>
+</select></label>
+<p class="muted">This is an informational comfort preference, not a gender verification or messaging restriction. Anyone signed in can still contact you. Be respectful of the poster's preference.</p>
 <fieldset><legend>Class days</legend><div class="days">
 <label><input type="checkbox" name="day" value="Mon"> Mon</label><label><input type="checkbox" name="day" value="Tue"> Tue</label><label><input type="checkbox" name="day" value="Wed"> Wed</label><label><input type="checkbox" name="day" value="Thu"> Thu</label><label><input type="checkbox" name="day" value="Fri"> Fri</label><label><input type="checkbox" name="day" value="Sat"> Sat</label><label><input type="checkbox" name="day" value="Sun"> Sun</label>
 </div></fieldset>
@@ -138,6 +145,7 @@ button:hover:not(:disabled){filter:brightness(1.07)}button:disabled{opacity:.65;
     <button>Send message</button>
   </form>
 </dialog>
+<footer class="site-legal" style="text-align:center;margin:30px 0 6px;padding:18px;font-size:.9rem"><a href="./terms.html">Terms of Service</a> <span aria-hidden="true">·</span> <a href="./privacy.html">Privacy Policy</a></footer>
 </main>
 <script type="module">
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
@@ -354,7 +362,11 @@ function render() {
     const [hours, minutes] = ride.time.slice(0,5).split(':').map(Number);
     const time = new Date(2000,0,1,hours,minutes).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     details.textContent = ride.days.join(', ') + ' · ' + (ride.direction === 'campus' ? 'Arrive by ' : 'Leaving at ') + time;
-    card.append(tag,route,details);
+    const preference=document.createElement('p');
+    preference.className='muted';
+    const preferenceLabel={everyone:'Open to everyone',women:'Women only',men:'Men only'};
+    preference.textContent='Ride preference: '+(preferenceLabel[ride.ride_preference]||'Open to everyone');
+    card.append(tag,route,details,preference);
     if (ride.mine) {
       const remove = document.createElement('button');
       remove.className = 'alt';
@@ -435,7 +447,7 @@ form.onsubmit = async event => {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({kind:data.get('kind'), direction:data.get('direction'),
-        community:data.get('community'), days, time})
+        community:data.get('community'), ride_preference:data.get('ride_preference')||'everyone', days, time})
     });
     for (const id of ['filterDirection','filterType','filterCommunity']) get(id).value = '';
     get('feedback').textContent = 'Ride posted.';

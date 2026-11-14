@@ -187,10 +187,17 @@ async function markThreadRead(id, timestamp) {
   }
   await updateUnreadBadge();
 }
+async function getHiddenThreads() {
+  const {data,error}=await supabase.from('hidden_ride_conversations')
+    .select('thread_id,hidden_at').eq('user_id',user.id);
+  if(error)throw error;
+  return new Map((data||[]).map(row=>[row.thread_id,row.hidden_at]));
+}
 async function getUnreadThreadIds() {
-  const [{data:messages,error:messageError},{data:markers,error:markerError}]=await Promise.all([
+  const [{data:messages,error:messageError},{data:markers,error:markerError},hidden]=await Promise.all([
     supabase.from('ride_messages').select('thread_id,sender_id,sent_at').order('sent_at',{ascending:false}),
-    supabase.from('message_read_state').select('thread_id,last_read_at').eq('user_id',user.id)
+    supabase.from('message_read_state').select('thread_id,last_read_at').eq('user_id',user.id),
+    getHiddenThreads()
   ]);
   if(messageError)throw messageError;
   if(markerError)throw markerError;
@@ -199,6 +206,7 @@ async function getUnreadThreadIds() {
   // A thread stays unread if ANY incoming message arrived after its read marker,
   // even if the current user subsequently sent a reply.
   for(const message of messages||[]) {
+    if(hidden.has(message.thread_id) && new Date(message.sent_at)<=new Date(hidden.get(message.thread_id)))continue;
     const readAt=readByThread.get(message.thread_id);
     if(message.sender_id!==user.id && (!readAt || new Date(message.sent_at)>new Date(readAt))) {
       unread.add(message.thread_id);
@@ -262,8 +270,24 @@ async function request(path, options = {}) {
     let q=supabase.from('ride_messages').select('thread_id,subject,sent_at,ride_id').order('sent_at',{ascending:false});
     if(url.searchParams.get('ride'))q=q.eq('ride_id',url.searchParams.get('ride'));
     result=await q;if(result.error)throw result.error;
+    const hidden=await getHiddenThreads();
     const seen=new Set();
-    return result.data.filter(m=>{if(seen.has(m.thread_id))return false;seen.add(m.thread_id);return true;}).map(m=>({id:m.thread_id,subject:m.subject}));
+    return result.data.filter(m=>{
+      if(seen.has(m.thread_id))return false;
+      seen.add(m.thread_id);
+      return !hidden.has(m.thread_id) || new Date(m.sent_at)>new Date(hidden.get(m.thread_id));
+    }).map(m=>({id:m.thread_id,subject:m.subject}));
+  }
+  if (path.startsWith('/api/messages/') && method === 'DELETE') {
+    const threadId=path.split('/').pop();
+    const {data:participant,error:participantError}=await supabase.from('ride_messages')
+      .select('id').eq('thread_id',threadId).limit(1);
+    if(participantError)throw participantError;
+    if(!participant?.length)throw Error('Conversation not found.');
+    const {error}=await supabase.from('hidden_ride_conversations')
+      .upsert({user_id:user.id,thread_id:threadId,hidden_at:new Date().toISOString()},{onConflict:'user_id,thread_id'});
+    if(error)throw error;
+    return {ok:true};
   }
   if (path.startsWith('/api/messages') && method === 'POST') {
     let rideId,visitorId,subject,threadId=null;
@@ -504,7 +528,27 @@ function openMessage(view = {}) {
           button.textContent=item.subject;
         }
         button.onclick = () => openMessage(item);
-        messageList.append(button);
+        const row=document.createElement('div');
+        row.className='actions';
+        const remove=document.createElement('button');
+        remove.type='button';
+        remove.className='alt';
+        remove.textContent='Delete conversation';
+        remove.setAttribute('aria-label','Delete conversation: '+item.subject);
+        remove.onclick=async()=>{
+          if(!confirm('Remove this conversation from your inbox? The other participant will keep their messages. A new reply will make it appear again.'))return;
+          remove.disabled=true;
+          try {
+            await request('/api/messages/'+item.id,{method:'DELETE'});
+            await updateUnreadBadge();
+            openMessage();
+          } catch(error) {
+            messageStatus.textContent='Could not remove conversation: '+error.message;
+            remove.disabled=false;
+          }
+        };
+        row.append(button,remove);
+        messageList.append(row);
         continue;
       }
       const entry = document.createElement('article');

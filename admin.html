@@ -19,7 +19,7 @@ button.alt{background:#e1eddf;color:#143f35}
 button:disabled{opacity:.55;cursor:wait}
 button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #7ea84f;outline-offset:3px}
 [hidden]{display:none!important}
-table{border-collapse:collapse;width:100%;font-size:.9rem}
+dialog{border:1px solid #b9d0b8;border-radius:18px;padding:24px;max-width:min(95vw,600px);width:100%;box-shadow:0 18px 60px #143f3530}dialog::backdrop{background:#102d2488}dialog textarea{display:block;width:100%;font:inherit;padding:10px;border:1px solid #9fb9a6;border-radius:9px;margin:8px 0 12px}dialog label{display:block;font-weight:650;margin:12px 0}#notesList{max-height:230px;overflow:auto;white-space:pre-wrap}table{border-collapse:collapse;width:100%;font-size:.9rem}
 th,td{padding:13px 10px;text-align:left;border-bottom:1px solid #d8e5d7;vertical-align:top;overflow-wrap:anywhere}
 th{color:#506b59}
 .table-wrap{overflow-x:auto}
@@ -41,12 +41,12 @@ select{padding:9px;border:1px solid #a9c5b0;border-radius:8px;background:#fff;fo
 <div class="stat"><strong id="newCount">—</strong><span>New reports</span></div></div>
 <div class="tabs"><button id="showReports">Safety reports</button><button id="showMembers" class="alt">Members</button><button id="reload" class="alt">Refresh data</button></div>
 <section class="panel" id="reportsPanel"><h2>Safety reports</h2><p class="intro">Reports are not automatically reviewed. Record your investigation before closing a report. Never share report details with unrelated users.</p>
-<div class="table-wrap"><table><thead><tr><th>Submitted</th><th>Concern</th><th>Accounts</th><th>Details</th><th>Status</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Submitted</th><th>Concern</th><th>Accounts</th><th>Details</th><th>Status</th><th>Investigation notes</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
 <div class="actions" style="margin-top:15px"><button id="moreReports" class="alt">Load more reports</button></div></section>
 <section class="panel" id="membersPanel" hidden><h2>Member directory</h2><p class="intro">Email confirmation proves inbox access, not identity or student enrollment. Phone numbers are self-reported and unverified.</p>
-<div class="table-wrap"><table><thead><tr><th>Name / ID</th><th>Email</th><th>Phone</th><th>Registered</th><th>Rides</th><th>Reports received</th></tr></thead><tbody id="membersBody"></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Name / ID</th><th>Email</th><th>Phone</th><th>Registered</th><th>Rides</th><th>Reports received</th><th>Moderation</th></tr></thead><tbody id="membersBody"></tbody></table></div>
 <div class="actions" style="margin-top:15px"><button id="moreMembers" class="alt">Load more members</button></div></section>
-</section></main>
+</section><dialog id="notesDialog"><h2>Investigation notes</h2><p class="intro">Private notes are visible to authorized administrators.</p><div id="notesList"></div><form id="notesForm"><label>New note<textarea name="note" rows="4" minlength="3" maxlength="2000" required></textarea></label><button>Add note</button></form><p id="notesStatus" role="status"></p><button class="alt" id="notesClose">Close</button></dialog><dialog id="moderateDialog"><h2>Account moderation</h2><p id="moderateMember"></p><p class="intro">A suspension prevents new ride posts and messages. It does not revoke sign-in or remove existing content.</p><form id="moderateForm"><label>Suspension<select name="duration"><option value="0">Remove suspension</option><option value="1">1 day</option><option value="7">7 days</option><option value="30">30 days</option></select></label><label>Reason<textarea name="reason" maxlength="500" rows="3"></textarea></label><button>Save moderation</button></form><p id="moderateStatus" role="status"></p><button class="alt" id="moderateClose">Close</button></dialog></main>
 <footer><a href="./terms.html">Terms</a> · <a href="./privacy.html">Privacy</a> · Independently developed by <strong>Chaotic Zen Development Studio</strong></footer>
 </div>
 <script type="module">
@@ -58,6 +58,16 @@ let reports=[],members=[],reportOffset=0,memberOffset=0;
 function date(s){return s?new Date(s).toLocaleString():'—'}
 function cell(row,value,cls){const td=document.createElement('td');td.textContent=value??'—';if(cls)td.className=cls;row.append(td);return td}
 async function rpc(name,args){const {data,error}=await client.rpc(name,args);if(error)throw error;return data}
+let activeReport=null,activeMember=null;
+async function openNotes(id){
+ activeReport=id;$('notesDialog').showModal();$('notesStatus').textContent='Loading…';
+ try{const rows=await rpc('admin_report_notes',{p_report:id});const list=$('notesList');list.replaceChildren();if(!rows.length)list.textContent='No investigation notes yet.';for(const n of rows){const p=document.createElement('p');p.textContent=date(n.created_at)+' — '+n.note;list.append(p)}$('notesStatus').textContent=''}catch(e){$('notesStatus').textContent=e.message}
+}
+$('notesClose').onclick=()=>$('notesDialog').close();
+$('notesForm').onsubmit=async e=>{e.preventDefault();const btn=$('notesForm').querySelector('button');btn.disabled=true;try{await rpc('admin_add_report_note',{p_report:activeReport,p_note:$('notesForm').elements.note.value});$('notesForm').reset();await openNotes(activeReport)}catch(err){$('notesStatus').textContent=err.message}finally{btn.disabled=false}};
+function openModeration(m){activeMember=m;$('moderateMember').textContent=(m.full_name||m.email||m.user_id)+' · '+m.user_id;$('moderateForm').reset();$('moderateStatus').textContent='';$('moderateDialog').showModal()}
+$('moderateClose').onclick=()=>$('moderateDialog').close();
+$('moderateForm').onsubmit=async e=>{e.preventDefault();const form=$('moderateForm'),btn=form.querySelector('button'),days=Number(form.elements.duration.value),reason=form.elements.reason.value.trim();if(days&&reason.length<5){$('moderateStatus').textContent='Enter a reason of at least 5 characters.';return}if(!confirm(days?'Suspend this member for '+days+' day(s)?':'Remove this member’s suspension?'))return;btn.disabled=true;try{await rpc('admin_set_suspension',{p_user:activeMember.user_id,p_until:days?new Date(Date.now()+days*86400000).toISOString():null,p_reason:reason});$('moderateStatus').textContent='Moderation saved. Restrictions apply to new ride posts and messages.'}catch(err){$('moderateStatus').textContent=err.message}finally{btn.disabled=false}};
 function drawReports(){
  const body=$('reportsBody');body.replaceChildren();
  for(const r of reports){
@@ -67,16 +77,18 @@ function drawReports(){
   const td=document.createElement('td');const sel=document.createElement('select');sel.setAttribute('aria-label','Status for report '+r.id);
   for(const val of ['new','reviewing','closed']){const opt=new Option(val==='reviewing'?'Reviewing':val==='closed'?'Closed':'New',val);sel.add(opt)}
   sel.value=r.status;sel.onchange=async()=>{sel.disabled=true;try{await rpc('admin_update_report_status',{p_report_id:r.id,p_status:sel.value});r.status=sel.value;$('status').textContent='Report status saved.';drawStats()}catch(e){sel.value=r.status;$('status').textContent='Could not save: '+e.message}finally{sel.disabled=false}};
-  td.append(sel);tr.append(td);body.append(tr);
+  td.append(sel);tr.append(td);
+  const noteCell=document.createElement('td');const open=document.createElement('button');open.className='alt';open.textContent='Review notes';
+  open.onclick=()=>openNotes(r.id);noteCell.append(open);tr.append(noteCell);body.append(tr);
  }
- if(!reports.length)cell(body.insertRow(),'No reports to display.').colSpan=5;
+ if(!reports.length)cell(body.insertRow(),'No reports to display.').colSpan=6;
  $('moreReports').hidden=reports.length<reportOffset;
  drawStats();
 }
 function drawMembers(){
  const body=$('membersBody');body.replaceChildren();
- for(const m of members){const tr=document.createElement('tr');cell(tr,(m.full_name||'Name not provided')+'\n'+m.user_id).style.whiteSpace='pre-wrap';cell(tr,m.email);cell(tr,m.phone||'Not provided');cell(tr,date(m.created_at));cell(tr,String(m.ride_count));cell(tr,String(m.reports_received));body.append(tr)}
- if(!members.length)cell(body.insertRow(),'No members to display.').colSpan=6;
+ for(const m of members){const tr=document.createElement('tr');cell(tr,(m.full_name||'Name not provided')+'\n'+m.user_id).style.whiteSpace='pre-wrap';cell(tr,m.email);cell(tr,m.phone||'Not provided');cell(tr,date(m.created_at));cell(tr,String(m.ride_count));cell(tr,String(m.reports_received));const td=document.createElement('td');const btn=document.createElement('button');btn.className='alt';btn.textContent='Moderate';btn.onclick=()=>openModeration(m);td.append(btn);tr.append(td);body.append(tr)}
+ if(!members.length)cell(body.insertRow(),'No members to display.').colSpan=7;
  $('moreMembers').hidden=members.length<memberOffset;drawStats();
 }
 function drawStats(){$('memberCount').textContent=members.length;$('reportCount').textContent=reports.length;$('newCount').textContent=reports.filter(r=>r.status==='new').length}

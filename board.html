@@ -467,7 +467,14 @@ compose.onsubmit = async event => {
       rejected:'Resend rejected the email. Your in-app message was saved.',
       unconfirmed:'The email result could not be confirmed.'
     };
-    const notice = 'Message saved in your private inbox. Email notifications are not connected yet.';
+    let notice = 'Message saved in your private inbox.';
+    try {
+      const {data:mail,error:mailError}=await supabase.functions.invoke('notify-ride-message',{body:{threadId:id}});
+      if(mailError) notice += ' Email notification could not be sent.';
+      else if(mail?.status==='accepted') notice += ' Email notification submitted.';
+      else if(mail?.status==='disabled') notice += ' Recipient has disabled email notifications.';
+      else if(mail?.status==='already_processed') notice += ' Email notification already processed.';
+    } catch { notice += ' Email notification is temporarily unavailable.'; }
     if (dialog.open && currentView === view) openMessage({id, subject:view.subject, notice});
   } catch (error) {
     if (currentView === view) messageStatus.textContent = error.message;

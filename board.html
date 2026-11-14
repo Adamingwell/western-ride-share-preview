@@ -26,6 +26,43 @@ button:hover:not(:disabled){filter:brightness(1.07)}button:disabled{opacity:.65;
 .home-button:hover{background:#245848}.home-button:focus-visible{outline:3px solid #41774f;outline-offset:4px}
 .home-mark{width:38px;height:38px;flex:none;display:block;background:#e6fb93;border-radius:10px}
 .unread-badge{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 6px;margin-left:5px;border-radius:99px;background:#b72c32;color:#fff;font-size:12px;font-weight:800;vertical-align:middle}.unread-badge[hidden]{display:none!important}.inbox-thread{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:5px 0;text-align:left}.inbox-thread.is-unread{background:#e5f0cf;border:2px solid #5a8c4c}.thread-unread-label{display:inline-block;flex:none;background:#b72c32;color:#fff;border-radius:99px;padding:3px 9px;font-size:12px;font-weight:800}.message-entry.is-unread{border-left:4px solid #b72c32;padding-left:10px}.message-entry .thread-unread-label{margin-left:8px}
+
+/* Mobile-first refinements: comfortable controls, readable cards and compact dialogs. */
+@media (max-width: 700px) {
+  .site-header{align-items:stretch;gap:12px}
+  .home-button{width:100%;justify-content:center;min-width:0}
+  .home-button strong{overflow-wrap:anywhere}
+  .site-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:8px}
+  .site-nav a,.site-nav button{display:flex;justify-content:center;align-items:center;min-height:44px;min-width:0;text-align:center}
+  .hero{border-radius:18px;padding:28px 20px}
+  .hero h1{line-height:1.04;overflow-wrap:break-word}
+  .hero .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hero .actions button{min-width:0;min-height:44px;padding:11px 9px}
+  .panel{padding:18px 15px}
+  .grid{gap:14px}
+  .guide ol{padding-left:22px}
+  .filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .filters label{min-width:0}
+  .time-fields{gap:6px}
+  .time-fields select{padding:10px 5px;min-width:0}
+  .days{gap:8px}
+  .days label{display:flex;align-items:center;gap:5px;min-height:40px;padding:5px 9px;background:#e9f2e6;border-radius:8px}
+  .post{padding:17px 0}
+  .post button{min-height:44px}
+  dialog{width:calc(100% - 16px);max-width:560px;max-height:calc(100dvh - 24px);padding:18px 14px;border-radius:14px}
+  #messagesDialog .actions{display:flex;gap:8px;flex-wrap:wrap}
+  #messagesDialog .actions button{flex:1 1 145px;min-height:44px}
+  #messageList{max-height:45dvh}
+  #messageList .inbox-thread{width:100%;min-height:48px;white-space:normal;overflow-wrap:anywhere}
+  .message-entry{padding:10px;overflow-wrap:anywhere}
+  #compose textarea{min-height:96px}
+  #compose button{min-height:44px}
+}
+@media (max-width: 370px) {
+  .filters{grid-template-columns:1fr}
+  .hero .actions{grid-template-columns:1fr}
+  .site-nav{grid-template-columns:1fr 1fr}
+}
 </style>
 <header class="site-header" id="home">
   <a class="home-button" href="./" aria-label="Western Ride Share home">
@@ -54,7 +91,7 @@ button:hover:not(:disabled){filter:brightness(1.07)}button:disabled{opacity:.65;
   <p class="example"><strong>Example.</strong> For an 8 a.m. class, post Tomah → Western with <b>Arrive by 8:00 a.m.</b> Then post Western → Tomah with your after-class departure time.</p>
   <p class="muted">People signed in to the ride board can see your post type, route, days, and time. The board keeps names and contact details private. Select Message on someone else’s post to coordinate privately. Open Messages to see replies.</p>
 </details>
-<div class="grid"><section class="panel" id="rideBoard"><h2>Ride board</h2><div class="filters"><label>Direction<select id="filterDirection"><option value="">Both directions</option><option value="campus">To Western</option><option value="home">From Western</option></select></label><label>Post type<select id="filterType"><option value="">Requests and offers</option><option>Request</option><option>Offer</option></select></label></div><label>Community<select id="filterCommunity"><option value="">All communities</option></select></label><p id="boardError" role="status" hidden><span id="boardErrorText"></span> <a href="./sign-in.html">Sign in</a></p><div id="board"/> aria-live="polite"></div></section>
+<div class="grid"><section class="panel" id="rideBoard"><h2>Ride board</h2><div class="filters"><label>Direction<select id="filterDirection"><option value="">Both directions</option><option value="campus">To Western</option><option value="home">From Western</option></select></label><label>Post type<select id="filterType"><option value="">Requests and offers</option><option>Request</option><option>Offer</option></select></label></div><label>Community<select id="filterCommunity"><option value="">All communities</option></select></label><p id="boardError" role="status" hidden><span id="boardErrorText"></span> <a href="./sign-in.html">Sign in</a></p><div id="board" aria-live="polite"></div></section>
 <section class="panel"><h2>Post a ride</h2><form id="post">
 <label>Post type<select name="kind" id="kind"><option>Request</option><option>Offer</option></select></label>
 <label>Community<select name="community" id="community" required></select></label>

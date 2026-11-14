@@ -422,8 +422,10 @@ function openMessage(view = {}) {
   if (!dialog.open) dialog.showModal();
   compose.reset();
   compose.hidden = !view.rideId && !view.id;
-  get('messageBack').hidden = true;
-  get('messageClose').textContent = view.id || view.rideId ? 'Back to messages' : 'Close';
+  const inConversation=Boolean(view.id || view.rideId);
+  get('messageBack').hidden = !inConversation;
+  get('messageBack').textContent = '← Back to messages';
+  get('messageClose').textContent = inConversation ? 'Close conversation' : 'Close messages';
   get('messagesTitle').textContent = view.subject || 'Messages';
   messageList.replaceChildren();
   messageStatus.textContent = view.rideId ? 'Start a private conversation about this ride.' : 'Loading…';
@@ -476,13 +478,17 @@ function openMessage(view = {}) {
     if (currentView === view) messageStatus.textContent = error.message;
   });
 }
-get('inbox').onclick = get('messageBack').onclick = () => openMessage();
+get('inbox').onclick = () => openMessage();
+get('messageBack').onclick = () => openMessage();
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) { updateUnreadBadge().catch(console.warn); if (!dialog.open) refresh().catch(() => {}); }
 });
 get('messageClose').onclick = () => {
-  if (currentView?.id || currentView?.rideId) openMessage();
-  else dialog.close();
+  if (currentView?.id || currentView?.rideId) {
+    openMessage();
+  } else {
+    dialog.close();
+  }
 };
 dialog.addEventListener('cancel',event => {
   if(currentView?.id || currentView?.rideId) {

@@ -127,6 +127,13 @@ button:hover:not(:disabled){filter:brightness(1.07)}button:disabled{opacity:.65;
   <button type="button" class="alt" id="accountClose">Close</button>
   <h2 id="accountTitle">Account settings</h2>
   <p>Signed in as <strong id="accountEmail"></strong></p>
+  <h3>Your private profile</h3>
+  <form id="profileForm">
+    <label>Full name <input name="fullName" autocomplete="name" minlength="2" maxlength="120" required></label>
+    <label>Phone (optional, unverified) <input name="phone" type="tel" autocomplete="tel" maxlength="25"></label>
+    <p class="muted">Only you and authorized administrators can view these details. They are not shown on the ride board.</p>
+    <button type="submit">Save profile</button><p id="profileStatus" role="status"></p>
+  </form>
   <form id="accountForm">
     <label><input type="checkbox" name="emailEnabled"> Email me when I receive a message</label>
     <p class="muted">Email notifications include the message text.</p>
@@ -541,10 +548,29 @@ get('accountButton').onclick = async () => {
     accountForm.elements.emailEnabled.checked = account.emailEnabled;
     accountForm.hidden = !account.email;
     accountStatus.textContent = '';
+    const {data:profile,error:profileError}=await supabase.from('member_profiles').select('full_name,phone').eq('user_id',user.id).maybeSingle();
+    if(profileError)throw profileError;
+    const profileForm=get('profileForm');
+    profileForm.elements.fullName.value=profile?.full_name||'';
+    profileForm.elements.phone.value=profile?.phone||'';
+    get('profileStatus').textContent=profile?'':'Complete your profile to help with account safety.';
     await renderBlockedList();
   } catch (error) {
     accountStatus.textContent = error.message;
   }
+};
+get('profileForm').onsubmit=async event=>{
+ event.preventDefault();
+ const pf=get('profileForm'),button=pf.querySelector('button'),name=pf.elements.fullName.value.trim().replace(/\\s+/g,' '),phone=pf.elements.phone.value.trim();
+ if(name.length<2||name.length>120){get('profileStatus').textContent='Enter a full name between 2 and 120 characters.';return}
+ if(phone&&!/^[+0-9(). -]{7,25}$/.test(phone)){get('profileStatus').textContent='Enter a valid phone number or leave it blank.';return}
+ button.disabled=true;get('profileStatus').textContent='Saving…';
+ try{
+  const {error}=await supabase.from('member_profiles').upsert({user_id:user.id,full_name:name,phone:phone||null,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+  if(error)throw error;
+  get('profileStatus').textContent='Profile saved.';
+ }catch(error){get('profileStatus').textContent='Could not save: '+error.message}
+ finally{button.disabled=false}
 };
 accountForm.onsubmit = async event => {
   event.preventDefault();

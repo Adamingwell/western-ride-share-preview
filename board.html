@@ -40,6 +40,7 @@ button:hover:not(:disabled){filter:brightness(1.07)}button:disabled{opacity:.65;
     <a href="#rideBoard">Ride board</a>
     <button type="button" class="alt" id="inbox">Messages <span id="unreadBadge" class="unread-badge" hidden aria-label="Unread messages"></span></button>
     <button type="button" id="accountButton">Account</button>
+    <button type="button" class="alt" id="headerSignOut">Sign out</button>
   </nav>
 </header>
 <main><section class="hero"><div class="route">SMRT communities ↔ Western</div><h1>Share a ride <em>to Western.</em></h1><p>Find a ride to Western’s La Crosse campus or a ride home after class. Request a seat or offer one on your commute.</p><div class="actions"><button id="request">Request a ride</button><button class="alt" id="offer">Offer a ride</button></div></section>
@@ -107,7 +108,21 @@ import {SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY} from './supabase-config.js';
 const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const {data:{user},error:authError}=await supabase.auth.getUser();
 if(authError||!user){location.replace('./sign-in.html');throw Error('Sign in required');}
-document.getElementById('signOut').addEventListener('click',async e=>{e.preventDefault();await supabase.auth.signOut();location.assign('./sign-in.html');});
+async function signOut(e) {
+  e.preventDefault();
+  const buttons=[document.getElementById('signOut'),document.getElementById('headerSignOut')];
+  buttons.forEach(button=>{button.disabled=true;button.textContent='Signing out…';});
+  try {
+    const {error}=await supabase.auth.signOut();
+    if(error)throw error;
+    location.replace('./sign-in.html');
+  } catch(error) {
+    buttons.forEach((button,index)=>{button.disabled=false;button.textContent=index===0?'Sign out':'Sign out';});
+    alert('Could not sign out: '+(error.message||'Please try again.'));
+  }
+}
+document.getElementById('signOut').addEventListener('click',signOut);
+document.getElementById('headerSignOut').addEventListener('click',signOut);
 
 const get = id => document.getElementById(id);
 const form = get('post');

@@ -25,6 +25,7 @@ button:hover:not(:disabled){filter:brightness(1.07)}button:disabled{opacity:.65;
 .home-button strong{font:800 clamp(1rem,3.6vw,1.25rem)/1.1 "Bricolage Grotesque",Geist,system-ui,sans-serif}
 .home-button:hover{background:#245848}.home-button:focus-visible{outline:3px solid #41774f;outline-offset:4px}
 .home-mark{width:38px;height:38px;flex:none;display:block;background:#e6fb93;border-radius:10px}
+.unread-badge{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 6px;margin-left:5px;border-radius:99px;background:#b72c32;color:#fff;font-size:12px;font-weight:800;vertical-align:middle}.unread-badge[hidden]{display:none!important}
 </style>
 <header class="site-header" id="home">
   <a class="home-button" href="./" aria-label="Western Ride Share home">
@@ -37,7 +38,7 @@ button:hover:not(:disabled){filter:brightness(1.07)}button:disabled{opacity:.65;
   </a>
   <nav class="site-nav" aria-label="Ride board navigation">
     <a href="#rideBoard">Ride board</a>
-    <button type="button" class="alt" id="inbox">Messages</button>
+    <button type="button" class="alt" id="inbox">Messages <span id="unreadBadge" class="unread-badge" hidden aria-label="Unread messages"></span></button>
     <button type="button" id="accountButton">Account</button>
   </nav>
 </header>
@@ -120,6 +121,33 @@ for (const id of ['community','filterCommunity']) {
     select.append(group);
   }
 }
+// Message unread state is stored per account in this browser.
+const seenKey='wrs-read-'+user.id;
+let seenThreads={};
+try { seenThreads=JSON.parse(localStorage.getItem(seenKey)||'{}')||{}; } catch { seenThreads={}; }
+function markThreadRead(id, timestamp) {
+  seenThreads[id]=timestamp||new Date().toISOString();
+  localStorage.setItem(seenKey,JSON.stringify(seenThreads));
+  updateUnreadBadge().catch(console.warn);
+}
+async function updateUnreadBadge() {
+  const {data,error}=await supabase.from('ride_messages')
+    .select('thread_id,sender_id,sent_at')
+    .order('sent_at',{ascending:false});
+  if(error)throw error;
+  const latest=new Map();
+  for(const message of data)if(!latest.has(message.thread_id))latest.set(message.thread_id,message);
+  let unread=0;
+  for(const [id,message] of latest) {
+    if(message.sender_id!==user.id && (!seenThreads[id] || new Date(message.sent_at)>new Date(seenThreads[id])))unread++;
+  }
+  const badge=get('unreadBadge');
+  badge.hidden=unread===0;
+  badge.textContent=unread>99?'99+':String(unread);
+  get('inbox').setAttribute('aria-label',unread?'Messages, '+unread+' unread conversations':'Messages');
+}
+updateUnreadBadge().catch(console.warn);
+setInterval(()=>{if(!document.hidden)updateUnreadBadge().catch(console.warn);},30000);
 let posts = [];
 let loaded = false;
 async function request(path, options = {}) {
@@ -408,6 +436,7 @@ function openMessage(view = {}) {
       entry.append(heading,body);
       messageList.append(entry);
     }
+    if (view.id && items.length) markThreadRead(view.id, items[items.length-1].sent_at);
     messageList.scrollTop = messageList.scrollHeight;
   }).catch(error => {
     if (currentView === view) messageStatus.textContent = error.message;
@@ -415,7 +444,7 @@ function openMessage(view = {}) {
 }
 get('inbox').onclick = get('messageBack').onclick = () => openMessage();
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && !dialog.open) refresh().catch(() => {});
+  if (!document.hidden) { updateUnreadBadge().catch(console.warn); if (!dialog.open) refresh().catch(() => {}); }
 });
 get('messageClose').onclick = () => dialog.close();
 compose.onsubmit = async event => {

@@ -121,25 +121,34 @@ for (const id of ['community','filterCommunity']) {
     select.append(group);
   }
 }
-// Message unread state is stored per account in this browser.
-const seenKey='wrs-read-'+user.id;
-let seenThreads={};
-try { seenThreads=JSON.parse(localStorage.getItem(seenKey)||'{}')||{}; } catch { seenThreads={}; }
-function markThreadRead(id, timestamp) {
-  seenThreads[id]=timestamp||new Date().toISOString();
-  localStorage.setItem(seenKey,JSON.stringify(seenThreads));
-  updateUnreadBadge().catch(console.warn);
+// Read markers are stored in Supabase and shared across the user's devices.
+async function markThreadRead(id, timestamp) {
+  if (!id || !timestamp) return;
+  const {data:existing,error:lookupError}=await supabase.from('message_read_state')
+    .select('last_read_at').eq('user_id',user.id).eq('thread_id',id).maybeSingle();
+  if(lookupError)throw lookupError;
+  const lastRead=existing?.last_read_at;
+  if(!lastRead || new Date(timestamp)>new Date(lastRead)){
+    const {error}=await supabase.from('message_read_state')
+      .upsert({user_id:user.id,thread_id:id,last_read_at:timestamp},{onConflict:'user_id,thread_id'});
+    if(error)throw error;
+  }
+  await updateUnreadBadge();
 }
 async function updateUnreadBadge() {
-  const {data,error}=await supabase.from('ride_messages')
-    .select('thread_id,sender_id,sent_at')
-    .order('sent_at',{ascending:false});
-  if(error)throw error;
+  const [{data:messages,error:messageError},{data:markers,error:markerError}]=await Promise.all([
+    supabase.from('ride_messages').select('thread_id,sender_id,sent_at').order('sent_at',{ascending:false}),
+    supabase.from('message_read_state').select('thread_id,last_read_at').eq('user_id',user.id)
+  ]);
+  if(messageError)throw messageError;
+  if(markerError)throw markerError;
+  const readByThread=new Map((markers||[]).map(m=>[m.thread_id,m.last_read_at]));
   const latest=new Map();
-  for(const message of data)if(!latest.has(message.thread_id))latest.set(message.thread_id,message);
+  for(const message of messages||[])if(!latest.has(message.thread_id))latest.set(message.thread_id,message);
   let unread=0;
-  for(const [id,message] of latest) {
-    if(message.sender_id!==user.id && (!seenThreads[id] || new Date(message.sent_at)>new Date(seenThreads[id])))unread++;
+  for(const [id,message] of latest){
+    const readAt=readByThread.get(id);
+    if(message.sender_id!==user.id && (!readAt || new Date(message.sent_at)>new Date(readAt)))unread++;
   }
   const badge=get('unreadBadge');
   badge.hidden=unread===0;
@@ -148,6 +157,7 @@ async function updateUnreadBadge() {
 }
 updateUnreadBadge().catch(console.warn);
 setInterval(()=>{if(!document.hidden)updateUnreadBadge().catch(console.warn);},30000);
+
 let posts = [];
 let loaded = false;
 async function request(path, options = {}) {
@@ -436,7 +446,7 @@ function openMessage(view = {}) {
       entry.append(heading,body);
       messageList.append(entry);
     }
-    if (view.id && items.length) markThreadRead(view.id, items[items.length-1].sent_at);
+    if (view.id && items.length) markThreadRead(view.id, items[items.length-1].sent_at).catch(error => { messageStatus.textContent = 'Could not save read status: ' + error.message; });
     messageList.scrollTop = messageList.scrollHeight;
   }).catch(error => {
     if (currentView === view) messageStatus.textContent = error.message;

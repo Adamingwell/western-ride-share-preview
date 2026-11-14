@@ -277,9 +277,14 @@ get('safetyForm').onsubmit=async e=>{
  e.preventDefault();const button=get('safetyForm').querySelector('button');button.disabled=true;
  try {
   const form=new FormData(get('safetyForm'));
-  const {error}=await supabase.rpc('report_ride_user',{p_reported_id:reportTarget.otherId,p_category:form.get('category'),p_details:form.get('details'),p_thread_id:reportTarget.threadId||null,p_ride_id:reportTarget.rideId||null});
+  const {data:reportId,error}=await supabase.rpc('report_ride_user',{p_reported_id:reportTarget.otherId,p_category:form.get('category'),p_details:form.get('details'),p_thread_id:reportTarget.threadId||null,p_ride_id:reportTarget.rideId||null});
   if(error)throw error;
   get('safetyStatus').textContent='Report submitted. For immediate danger, call 911.';
+  // Email alert is best-effort; the report remains saved even if delivery fails.
+  try {
+    const {error:alertError}=await supabase.functions.invoke('notify-safety-report',{body:{reportId}});
+    if(alertError)console.warn('Safety notification could not be delivered',alertError);
+  }catch(alertError){console.warn('Safety notification unavailable',alertError)}
   get('safetyForm').hidden=true;
  } catch(error){get('safetyStatus').textContent='Could not submit report: '+error.message}
  finally{button.disabled=false}

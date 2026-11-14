@@ -9,6 +9,9 @@ const password = document.querySelector('#password');
 const heading = document.querySelector('#auth-heading');
 const agreement = document.querySelector('#signup-agreement');
 const acceptTerms = document.querySelector('#acceptTerms');
+const signupProfile = document.querySelector('#signup-profile');
+const fullName = document.querySelector('#fullName');
+const phone = document.querySelector('#phone');
 const termsVersion = '2026-11-14';
 let mode = 'signin';
 function setStatus(message, error = false) { status.textContent = message; status.style.color = error ? '#a12d2d' : '#204e3c'; }
@@ -31,6 +34,8 @@ function setMode(next) {
   heading.textContent = next === 'signup' ? 'Create your account' : next === 'reset' ? 'Reset your password' : 'Welcome back';
   submit.textContent = next === 'signup' ? 'Create account' : next === 'reset' ? 'Send reset email' : 'Sign in';
   agreement.hidden = next !== 'signup';
+  signupProfile.hidden = next !== 'signup';
+  fullName.required = next === 'signup';
   acceptTerms.required = next === 'signup';
   if (next !== 'signup') acceptTerms.checked = false;
   password.hidden = next === 'reset';
@@ -46,9 +51,13 @@ form.addEventListener('submit', async event => {
     let result;
     if (mode === 'signup') {
       if (!acceptTerms.checked) throw Error('Please accept the Terms of Service before creating an account.');
+      const name = fullName.value.trim().replace(/\s+/g,' ');
+      const phoneValue = phone.value.trim();
+      if(name.length < 2 || name.length > 120) throw Error('Enter your full name (2–120 characters).');
+      if(phoneValue && (!/^[+0-9(). -]{7,25}$/.test(phoneValue))) throw Error('Enter a valid phone number or leave it blank.');
       result = await supabase.auth.signUp({email:address,password:password.value,options:{
         emailRedirectTo:redirectTo,
-        data:{terms_accepted_at:new Date().toISOString(),terms_version:termsVersion}
+        data:{full_name:name,phone:phoneValue||null,terms_accepted_at:new Date().toISOString(),terms_version:termsVersion}
       }});
     }
     else if (mode === 'reset') result = await supabase.auth.resetPasswordForEmail(address,{redirectTo:new URL('./reset-password.html',location.href).href});

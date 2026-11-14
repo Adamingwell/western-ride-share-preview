@@ -12,6 +12,20 @@ const acceptTerms = document.querySelector('#acceptTerms');
 const termsVersion = '2026-11-14';
 let mode = 'signin';
 function setStatus(message, error = false) { status.textContent = message; status.style.color = error ? '#a12d2d' : '#204e3c'; }
+function showSignupGuidance() {
+  setStatus('If this email is eligible for registration, check your inbox for a confirmation link. Already registered? ');
+  const signin = document.createElement('button');
+  signin.type = 'button';
+  signin.textContent = 'Sign in';
+  signin.className = 'auth-inline-action';
+  signin.addEventListener('click', () => setMode('signin'));
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.textContent = 'Reset password';
+  reset.className = 'auth-inline-action';
+  reset.addEventListener('click', () => setMode('reset'));
+  status.append(signin, document.createTextNode(' or '), reset, document.createTextNode('.'));
+}
 function setMode(next) {
   mode = next;
   heading.textContent = next === 'signup' ? 'Create your account' : next === 'reset' ? 'Reset your password' : 'Welcome back';
@@ -41,8 +55,12 @@ form.addEventListener('submit', async event => {
     else result = await supabase.auth.signInWithPassword({email:address,password:password.value});
     if (result.error) throw result.error;
     if (mode === 'signin') location.assign('./board.html');
-    else setStatus(mode === 'signup' ? 'Check your email to confirm your account before signing in.' : 'If that address has an account, a password reset email is on its way.');
-  } catch (error) { setStatus(error.message || 'Something went wrong.', true); }
+    else if (mode === 'signup') showSignupGuidance();
+    else setStatus('If that address has an account, a password reset email is on its way.');
+  } catch (error) {
+    if (mode === 'signup' && /already registered|already exists|user already registered/i.test(error.message || '')) showSignupGuidance();
+    else setStatus(error.message || 'Something went wrong.', true);
+  }
   finally { submit.disabled = false; }
 });
 supabase.auth.getSession().then(({data})=>{if(data.session) location.replace('./board.html');});

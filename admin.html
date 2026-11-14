@@ -60,7 +60,7 @@ function cell(row,value,cls){const td=document.createElement('td');td.textConten
 async function rpc(name,args){const {data,error}=await client.rpc(name,args);if(error)throw error;return data}
 let activeReport=null,activeMember=null;
 async function openNotes(id){
- activeReport=id;$('notesDialog').showModal();$('notesStatus').textContent='Loading…';
+ activeReport=id;if(!$('notesDialog').open)$('notesDialog').showModal();$('notesStatus').textContent='Loading…';
  try{const rows=await rpc('admin_report_notes',{p_report:id});const list=$('notesList');list.replaceChildren();if(!rows.length)list.textContent='No investigation notes yet.';for(const n of rows){const p=document.createElement('p');p.textContent=date(n.created_at)+' — '+n.note;list.append(p)}$('notesStatus').textContent=''}catch(e){$('notesStatus').textContent=e.message}
 }
 $('notesClose').onclick=()=>$('notesDialog').close();

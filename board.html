@@ -566,7 +566,7 @@ get('accountButton').onclick = async () => {
 };
 get('profileForm').onsubmit=async event=>{
  event.preventDefault();
- const pf=get('profileForm'),button=pf.querySelector('button'),name=pf.elements.fullName.value.trim().replace(/\\s+/g,' '),phone=pf.elements.phone.value.trim();
+ const pf=get('profileForm'),button=pf.querySelector('button'),name=pf.elements.fullName.value.trim().replace(/\s+/g,' '),phone=pf.elements.phone.value.trim();
  if(name.length<2||name.length>120){get('profileStatus').textContent='Enter a full name between 2 and 120 characters.';return}
  if(phone&&!/^[+0-9(). -]{7,25}$/.test(phone)){get('profileStatus').textContent='Enter a valid phone number or leave it blank.';return}
  button.disabled=true;get('profileStatus').textContent='Saving…';

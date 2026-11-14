@@ -40,6 +40,8 @@ function setMode(next) {
   if (next !== 'signup') acceptTerms.checked = false;
   password.hidden = next === 'reset';
   password.required = next !== 'reset';
+  password.minLength = next === 'signup' ? 12 : 1;
+  password.autocomplete = next === 'signup' ? 'new-password' : 'current-password';
   setStatus('');
 }
 document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => setMode(button.dataset.mode)));

@@ -422,7 +422,8 @@ function openMessage(view = {}) {
   if (!dialog.open) dialog.showModal();
   compose.reset();
   compose.hidden = !view.rideId && !view.id;
-  get('messageBack').hidden = compose.hidden;
+  get('messageBack').hidden = true;
+  get('messageClose').textContent = view.id || view.rideId ? 'Back to messages' : 'Close';
   get('messagesTitle').textContent = view.subject || 'Messages';
   messageList.replaceChildren();
   messageStatus.textContent = view.rideId ? 'Start a private conversation about this ride.' : 'Loading…';
@@ -479,7 +480,16 @@ get('inbox').onclick = get('messageBack').onclick = () => openMessage();
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) { updateUnreadBadge().catch(console.warn); if (!dialog.open) refresh().catch(() => {}); }
 });
-get('messageClose').onclick = () => dialog.close();
+get('messageClose').onclick = () => {
+  if (currentView?.id || currentView?.rideId) openMessage();
+  else dialog.close();
+};
+dialog.addEventListener('cancel',event => {
+  if(currentView?.id || currentView?.rideId) {
+    event.preventDefault();
+    openMessage();
+  }
+});
 compose.onsubmit = async event => {
   event.preventDefault();
   const view = currentView;

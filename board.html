@@ -132,8 +132,21 @@ button:hover:not(:disabled){filter:brightness(1.07)}button:disabled{opacity:.65;
     <p class="muted">Email notifications include the message text.</p>
     <button>Save settings</button>
   </form>
+  <h3>Blocked accounts</h3><p class="muted">Blocked users cannot send you new messages, and you cannot message them. Existing conversations remain available.</p>
+  <div id="blockedList"></div><p id="blockStatus" role="status"></p>
   <p id="accountStatus" role="status"></p>
   <a href="./sign-in.html" id="signOut">Sign out</a>
+</dialog>
+<dialog id="safetyDialog" aria-labelledby="safetyTitle">
+  <button type="button" class="alt" id="safetyClose">Close</button>
+  <h2 id="safetyTitle">Report a safety concern</h2>
+  <p class="muted">Reports are confidential and should be reviewed by the site operator. For immediate danger, call 911. Do not include unnecessary sensitive information.</p>
+  <form id="safetyForm">
+    <label>Reason<select name="category" required><option value="harassment">Harassment or threats</option><option value="unsafe">Unsafe driving or conduct</option><option value="fraud">Scam or misleading post</option><option value="discrimination">Discrimination</option><option value="other">Other concern</option></select></label>
+    <label>What happened?<textarea name="details" minlength="10" maxlength="2000" rows="5" required></textarea></label>
+    <button type="submit">Submit report</button>
+  </form>
+  <p id="safetyStatus" role="status"></p>
 </dialog>
 <dialog id="messagesDialog" aria-labelledby="messagesTitle">
   <div class="actions"><button type="button" class="alt" id="messageBack">Inbox</button><button type="button" class="alt" id="messageClose">Close</button></div>
@@ -232,6 +245,51 @@ async function updateUnreadBadge() {
 updateUnreadBadge().catch(console.warn);
 setInterval(()=>{if(!document.hidden)updateUnreadBadge().catch(console.warn);},30000);
 
+let blockedIds=new Set();
+let reportTarget=null;
+async function loadBlocks() {
+  const {data,error}=await supabase.from('blocked_users').select('blocked_id').eq('blocker_id',user.id);
+  if(error)throw error;
+  blockedIds=new Set(data.map(x=>x.blocked_id));
+}
+async function blockUser(otherId) {
+  if(!otherId||otherId===user.id)return;
+  if(!confirm('Block this account? Neither of you will be able to send new messages to the other.'))return;
+  const {error}=await supabase.from('blocked_users').insert({blocker_id:user.id,blocked_id:otherId});
+  if(error)throw error;
+  await loadBlocks();render();await updateUnreadBadge();
+}
+function openReport(otherId,context={}) {
+  if(!otherId||otherId===user.id)return;
+  reportTarget={otherId,...context};
+  get('safetyForm').reset();get('safetyStatus').textContent='';
+  get('safetyDialog').showModal();
+}
+get('safetyClose').onclick=()=>get('safetyDialog').close();
+get('safetyForm').onsubmit=async e=>{
+ e.preventDefault();const button=get('safetyForm').querySelector('button');button.disabled=true;
+ try {
+  const form=new FormData(get('safetyForm'));
+  const {error}=await supabase.rpc('report_ride_user',{p_reported_id:reportTarget.otherId,p_category:form.get('category'),p_details:form.get('details'),p_thread_id:reportTarget.threadId||null,p_ride_id:reportTarget.rideId||null});
+  if(error)throw error;
+  get('safetyStatus').textContent='Report submitted. For immediate danger, call 911.';
+  get('safetyForm').hidden=true;
+ } catch(error){get('safetyStatus').textContent='Could not submit report: '+error.message}
+ finally{button.disabled=false}
+};
+get('safetyDialog').addEventListener('close',()=>get('safetyForm').hidden=false);
+async function renderBlockedList(){
+ const list=get('blockedList');list.replaceChildren();
+ await loadBlocks();
+ if(!blockedIds.size){list.textContent='No blocked accounts.';return}
+ for(const id of blockedIds){
+  const row=document.createElement('div');row.className='actions';
+  const label=document.createElement('small');label.textContent='Blocked account · '+id.slice(0,8);
+  const button=document.createElement('button');button.className='alt';button.textContent='Unblock';
+  button.onclick=async()=>{button.disabled=true;const {error}=await supabase.from('blocked_users').delete().eq('blocker_id',user.id).eq('blocked_id',id);if(error){get('blockStatus').textContent=error.message;button.disabled=false;return}await renderBlockedList();render();};
+  row.append(label,button);list.append(row);
+ }
+}
 let posts = [];
 let loaded = false;
 async function request(path, options = {}) {
@@ -241,6 +299,7 @@ async function request(path, options = {}) {
   if (path === '/api/rides' && method === 'GET') {
     result = await supabase.from('rides').select('*').order('created_at',{ascending:false});
     if (result.error) throw result.error;
+    await loadBlocks();
     const owned = result.data.filter(r=>r.owner_id===user.id).map(r=>r.id);
     let counts = [];
     if (owned.length) {
@@ -275,7 +334,7 @@ async function request(path, options = {}) {
       if(!result.data.length)throw Error('Conversation not found.');
       return result.data.map(m=>({...m,mine:m.sender_id===user.id}));
     }
-    let q=supabase.from('ride_messages').select('thread_id,subject,sent_at,ride_id').order('sent_at',{ascending:false});
+    let q=supabase.from('ride_messages').select('thread_id,subject,sent_at,ride_id,poster_id,visitor_id').order('sent_at',{ascending:false});
     if(url.searchParams.get('ride'))q=q.eq('ride_id',url.searchParams.get('ride'));
     result=await q;if(result.error)throw result.error;
     const hidden=await getHiddenThreads();
@@ -284,7 +343,7 @@ async function request(path, options = {}) {
       if(seen.has(m.thread_id))return false;
       seen.add(m.thread_id);
       return !hidden.has(m.thread_id) || new Date(m.sent_at)>new Date(hidden.get(m.thread_id));
-    }).map(m=>({id:m.thread_id,subject:m.subject}));
+    }).map(m=>({id:m.thread_id,subject:m.subject,otherId:m.poster_id===user.id?m.visitor_id:m.poster_id}));
   }
   if (path.startsWith('/api/messages/') && method === 'DELETE') {
     const threadId=path.split('/').pop();
@@ -337,7 +396,7 @@ function render() {
   const board = get('board');
   board.replaceChildren();
   if (!loaded) { board.textContent = get('boardError').hidden ? 'Loading rides…' : ''; return; }
-  const visible = posts.filter(ride =>
+  const visible = posts.filter(ride => !blockedIds.has(ride.owner_id) &&
     (!get('filterCommunity').value || get('filterCommunity').value === ride.community) &&
     (!get('filterDirection').value || get('filterDirection').value === ride.direction) &&
     (!get('filterType').value || get('filterType').value === ride.kind)
@@ -396,8 +455,12 @@ function render() {
     } else {
       const message = document.createElement('button');
       message.textContent = 'Message';
-      message.onclick = () => openMessage({rideId:ride.id, subject:route.textContent});
-      card.append(message);
+      message.onclick = () => openMessage({rideId:ride.id, subject:route.textContent,otherId:ride.owner_id});
+      const report=document.createElement('button');report.className='alt';report.textContent='Report';
+      report.onclick=()=>openReport(ride.owner_id,{rideId:ride.id});
+      const block=document.createElement('button');block.className='alt';block.textContent='Block';
+      block.onclick=async()=>{try{await blockUser(ride.owner_id)}catch(e){get('boardErrorText').textContent=e.message;get('boardError').hidden=false}};
+      const actions=document.createElement('div');actions.className='actions';actions.append(message,report,block);card.append(actions);
     }
     board.append(card);
   }
@@ -478,6 +541,7 @@ get('accountButton').onclick = async () => {
     accountForm.elements.emailEnabled.checked = account.emailEnabled;
     accountForm.hidden = !account.email;
     accountStatus.textContent = '';
+    await renderBlockedList();
   } catch (error) {
     accountStatus.textContent = error.message;
   }
@@ -509,7 +573,7 @@ function openMessage(view = {}) {
   currentView = view;
   if (!dialog.open) dialog.showModal();
   compose.reset();
-  compose.hidden = !view.rideId && !view.id;
+  compose.hidden = (!view.rideId && !view.id) || blockedIds.has(view.otherId);
   const inConversation=Boolean(view.id || view.rideId);
   get('messageBack').hidden = !inConversation;
   get('messageBack').textContent = '← Back to messages';
@@ -559,7 +623,11 @@ function openMessage(view = {}) {
             remove.disabled=false;
           }
         };
-        row.append(button,remove);
+        const report=document.createElement('button');report.className='alt';report.textContent='Report';
+        report.onclick=()=>openReport(item.otherId,{threadId:item.id});
+        const block=document.createElement('button');block.className='alt';block.textContent='Block';
+        block.onclick=async()=>{try{await blockUser(item.otherId);openMessage()}catch(e){messageStatus.textContent=e.message}};
+        row.append(button,remove,report,block);
         messageList.append(row);
         continue;
       }
@@ -632,7 +700,7 @@ compose.onsubmit = async event => {
       else if(mail?.status==='disabled') notice += ' Recipient has disabled email notifications.';
       else if(mail?.status==='already_processed') notice += ' Email notification already processed.';
     } catch { notice += ' Email notification is temporarily unavailable.'; }
-    if (dialog.open && currentView === view) openMessage({id, subject:view.subject, notice});
+    if (dialog.open && currentView === view) openMessage({id, subject:view.subject, notice,otherId:view.otherId});
   } catch (error) {
     if (currentView === view) messageStatus.textContent = error.message;
   } finally {

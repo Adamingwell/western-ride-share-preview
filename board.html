@@ -25,7 +25,7 @@ button:hover:not(:disabled){filter:brightness(1.07)}button:disabled{opacity:.65;
 .home-button strong{font:800 clamp(1rem,3.6vw,1.25rem)/1.1 "Bricolage Grotesque",Geist,system-ui,sans-serif}
 .home-button:hover{background:#245848}.home-button:focus-visible{outline:3px solid #41774f;outline-offset:4px}
 .home-mark{width:38px;height:38px;flex:none;display:block;background:#e6fb93;border-radius:10px}
-.unread-badge{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 6px;margin-left:5px;border-radius:99px;background:#b72c32;color:#fff;font-size:12px;font-weight:800;vertical-align:middle}.unread-badge[hidden]{display:none!important}
+.unread-badge{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 6px;margin-left:5px;border-radius:99px;background:#b72c32;color:#fff;font-size:12px;font-weight:800;vertical-align:middle}.unread-badge[hidden]{display:none!important}.inbox-thread{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:5px 0;text-align:left}.inbox-thread.is-unread{background:#e5f0cf;border:2px solid #5a8c4c}.thread-unread-label{display:inline-block;flex:none;background:#b72c32;color:#fff;border-radius:99px;padding:3px 9px;font-size:12px;font-weight:800}.message-entry.is-unread{border-left:4px solid #b72c32;padding-left:10px}.message-entry .thread-unread-label{margin-left:8px}
 </style>
 <header class="site-header" id="home">
   <a class="home-button" href="./" aria-label="Western Ride Share home">
@@ -135,7 +135,7 @@ async function markThreadRead(id, timestamp) {
   }
   await updateUnreadBadge();
 }
-async function updateUnreadBadge() {
+async function getUnreadThreadIds() {
   const [{data:messages,error:messageError},{data:markers,error:markerError}]=await Promise.all([
     supabase.from('ride_messages').select('thread_id,sender_id,sent_at').order('sent_at',{ascending:false}),
     supabase.from('message_read_state').select('thread_id,last_read_at').eq('user_id',user.id)
@@ -145,11 +145,15 @@ async function updateUnreadBadge() {
   const readByThread=new Map((markers||[]).map(m=>[m.thread_id,m.last_read_at]));
   const latest=new Map();
   for(const message of messages||[])if(!latest.has(message.thread_id))latest.set(message.thread_id,message);
-  let unread=0;
-  for(const [id,message] of latest){
+  const unread=new Set();
+  for(const [id,message] of latest) {
     const readAt=readByThread.get(id);
-    if(message.sender_id!==user.id && (!readAt || new Date(message.sent_at)>new Date(readAt)))unread++;
+    if(message.sender_id!==user.id && (!readAt || new Date(message.sent_at)>new Date(readAt)))unread.add(id);
   }
+  return unread;
+}
+async function updateUnreadBadge() {
+  const unread=(await getUnreadThreadIds()).size;
   const badge=get('unreadBadge');
   badge.hidden=unread===0;
   badge.textContent=unread>99?'99+':String(unread);
@@ -424,14 +428,24 @@ function openMessage(view = {}) {
   const inboxPath = view.rideFilter
     ? '/api/messages?ride=' + encodeURIComponent(view.rideFilter)
     : '/api/messages';
-  request(view.id ? '/api/messages/' + view.id : inboxPath).then(items => {
+  Promise.all([request(view.id ? '/api/messages/' + view.id : inboxPath),getUnreadThreadIds()]).then(([items,unreadThreads]) => {
     if (currentView !== view) return;
     messageStatus.textContent = items.length ? (view.notice || '') : 'No conversations yet. Select Message on a ride post to start one.';
     for (const item of items) {
       if (!view.id) {
         const button = document.createElement('button');
         button.className = 'alt';
-        button.textContent = item.subject;
+        button.classList.add('inbox-thread');
+        if (unreadThreads.has(item.id)) {
+          button.classList.add('is-unread');
+          const label=document.createElement('span');
+          label.className='thread-unread-label';
+          label.textContent='Unread';
+          button.append(document.createTextNode(item.subject),label);
+          button.setAttribute('aria-label',item.subject+', unread');
+        } else {
+          button.textContent=item.subject;
+        }
         button.onclick = () => openMessage(item);
         messageList.append(button);
         continue;
@@ -443,6 +457,13 @@ function openMessage(view = {}) {
         new Date(item.sent_at).toLocaleString();
       const body = document.createElement('p');
       body.textContent = item.body;
+      if(!item.mine && unreadThreads.has(view.id)) {
+        entry.classList.add('is-unread');
+        const unreadLabel=document.createElement('span');
+        unreadLabel.className='thread-unread-label';
+        unreadLabel.textContent='Unread';
+        heading.append(unreadLabel);
+      }
       entry.append(heading,body);
       messageList.append(entry);
     }
